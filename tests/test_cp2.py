@@ -196,6 +196,8 @@ class TestBuildThat:
             cwd=repo_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=900,
         )
         assert result.returncode == 0, f"docker build thất bại:\n{result.stderr[-3000:]}"
@@ -205,6 +207,8 @@ class TestBuildThat:
             ["docker", "images", IMAGE_TAG, "--format", "{{.Size}}"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=60,
         )
         size_text = result.stdout.strip()

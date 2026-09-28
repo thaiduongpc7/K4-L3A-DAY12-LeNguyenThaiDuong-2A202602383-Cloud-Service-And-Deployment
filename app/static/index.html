@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Day12 Agent</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #1b1f27;
+      --panel-2: #222733;
+      --line: #343b49;
+      --text: #f4f6f8;
+      --muted: #a8b0bd;
+      --accent: #58c7b1;
+      --accent-dark: #1a6b61;
+      --danger: #ff8e8e;
+      --user: #25483f;
+      --assistant: #252b36;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, input, textarea { font: inherit; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 290px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      padding: 28px 22px;
+      border-right: 1px solid var(--line);
+      background: #171a21;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 34px;
+    }
+
+    .brand-mark {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #0d2925;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand strong { display: block; font-size: 16px; }
+    .brand span { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+
+    .section-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    label {
+      display: block;
+      color: #d9dee6;
+      font-size: 13px;
+      margin-bottom: 7px;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: 0;
+      background: var(--panel);
+      color: var(--text);
+      transition: border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    input {
+      height: 42px;
+      padding: 0 12px;
+    }
+
+    textarea {
+      min-height: 112px;
+      resize: vertical;
+      padding: 13px 14px;
+      line-height: 1.5;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88, 199, 177, 0.13);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 8px 0 0;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 26px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 4px rgba(88, 199, 177, 0.12);
+    }
+
+    .status-dot.error { background: var(--danger); box-shadow: 0 0 0 4px rgba(255, 142, 142, 0.12); }
+
+    .main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 24px 34px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(21px, 3vw, 30px);
+      letter-spacing: 0;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .health {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .conversation {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      padding: 32px 34px 22px;
+      overflow-y: auto;
+    }
+
+    .empty {
+      min-height: 340px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-inner { max-width: 440px; }
+    .empty h2 { color: var(--text); font-size: 22px; margin: 0 0 10px; }
+    .empty p { margin: 0; line-height: 1.6; font-size: 14px; }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      margin: 0 0 24px;
+    }
+
+    .avatar {
+      flex: 0 0 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .message.user .avatar { background: var(--user); color: #a9f5e5; }
+
+    .bubble {
+      min-width: 0;
+      max-width: 760px;
+      padding: 13px 15px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--assistant);
+      line-height: 1.6;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 14px;
+    }
+
+    .message.user .bubble { background: var(--user); border-color: #34685a; }
+
+    .meta {
+      color: var(--muted);
+      font-size: 11px;
+      margin: 6px 0 0 2px;
+    }
+
+    .composer {
+      width: min(900px, 100%);
+      margin: 0 auto;
+      padding: 12px 34px 28px;
+    }
+
+    .composer-box {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 10px;
+    }
+
+    .composer-box:focus-within { border-color: var(--accent); }
+    .composer textarea { min-height: 74px; border: 0; background: transparent; padding: 9px 10px 46px; }
+    .composer textarea:focus { box-shadow: none; }
+
+    .send {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      min-width: 80px;
+      height: 34px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--accent);
+      color: #0d2925;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .send:hover { background: #78d8c3; }
+    .send:disabled { cursor: wait; opacity: 0.55; }
+    .composer-footer { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; padding: 3px 10px 0; }
+
+    @media (max-width: 760px) {
+      .shell { display: block; }
+      .sidebar { padding: 18px 18px 8px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .brand { margin-bottom: 18px; }
+      .settings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .field { margin: 0; }
+      .field:first-child { grid-column: 1 / -1; }
+      .status { margin: 16px 0 8px; }
+      .topbar { padding: 20px 18px; }
+      .health { display: none; }
+      .conversation { padding: 24px 18px 12px; }
+      .composer { padding: 10px 18px 20px; }
+    }
+
+    @media (max-width: 480px) {
+      .settings { display: block; }
+      .field { margin-bottom: 12px; }
+      .topbar h1 { font-size: 22px; }
+      .topbar p { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">AI</div>
+        <div>
+          <strong>Day12 Agent</strong>
+          <span>Production assistant</span>
+        </div>
+      </div>
+
+      <p class="section-label">Kết nối</p>
+      <div class="settings">
+        <div class="field">
+          <label for="apiKey">API key</label>
+          <input id="apiKey" type="password" autocomplete="off" placeholder="Nhập AGENT_API_KEY">
+          <p class="hint">Key chỉ được gửi trong request hiện tại.</p>
+        </div>
+        <div class="field">
+          <label for="userId">User ID</label>
+          <input id="userId" value="web-user" maxlength="100" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="status">
+        <span id="statusDot" class="status-dot"></span>
+        <span id="statusText">Đang kiểm tra service...</span>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1>Trò chuyện với Agent</h1>
+          <p>Đặt câu hỏi và nhận câu trả lời từ mock LLM của service.</p>
+        </div>
+        <div class="health" id="healthBadge">Checking...</div>
+      </header>
+
+      <section class="conversation" id="conversation">
+        <div class="empty" id="emptyState">
+          <div class="empty-inner">
+            <h2>Bắt đầu một cuộc trò chuyện</h2>
+            <p>Nhập API key Railway ở bên trái, sau đó gửi câu hỏi đầu tiên bên dưới.</p>
+          </div>
+        </div>
+      </section>
+
+      <form class="composer" id="askForm">
+        <div class="composer-box">
+          <textarea id="question" maxlength="2000" placeholder="Bạn muốn hỏi điều gì?" aria-label="Câu hỏi"></textarea>
+          <button class="send" id="sendButton" type="submit">Gửi</button>
+          <div class="composer-footer">
+            <span id="counter">0 / 2000</span>
+            <span>Enter để gửi · Shift + Enter xuống dòng</span>
+          </div>
+        </div>
+      </form>
+    </main>
+  </div>
+
+  <script>
+    const apiKey = document.getElementById("apiKey");
+    const userId = document.getElementById("userId");
+    const question = document.getElementById("question");
+    const form = document.getElementById("askForm");
+    const sendButton = document.getElementById("sendButton");
+    const conversation = document.getElementById("conversation");
+    const emptyState = document.getElementById("emptyState");
+    const counter = document.getElementById("counter");
+    const healthBadge = document.getElementById("healthBadge");
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+
+    function addMessage(role, text, meta = "") {
+      emptyState.hidden = true;
+      const wrapper = document.createElement("article");
+      wrapper.className = `message ${role}`;
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = role === "user" ? "YOU" : "AI";
+
+      const content = document.createElement("div");
+      content.style.minWidth = "0";
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+      content.appendChild(bubble);
+
+      if (meta) {
+        const details = document.createElement("div");
+        details.className = "meta";
+        details.textContent = meta;
+        content.appendChild(details);
+      }
+
+      wrapper.append(avatar, content);
+      conversation.appendChild(wrapper);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    function setStatus(ok, text) {
+      statusDot.classList.toggle("error", !ok);
+      statusText.textContent = text;
+      healthBadge.textContent = ok ? "Service online" : "Service unavailable";
+    }
+
+    async function checkHealth() {
+      try {
+        const response = await fetch("/health");
+        const data = await response.json();
+        setStatus(response.ok, response.ok ? `${data.service} · online` : data.status);
+      } catch {
+        setStatus(false, "Không kết nối được service");
+      }
+    }
+
+    question.addEventListener("input", () => {
+      counter.textContent = `${question.value.length} / 2000`;
+    });
+
+    question.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const key = apiKey.value.trim();
+      const uid = userId.value.trim() || "web-user";
+      const text = question.value.trim();
+
+      if (!key) {
+        apiKey.focus();
+        setStatus(false, "Cần API key để gọi /ask");
+        return;
+      }
+      if (!text || sendButton.disabled) return;
+
+      addMessage("user", text);
+      question.value = "";
+      counter.textContent = "0 / 2000";
+      sendButton.disabled = true;
+      sendButton.textContent = "...";
+
+      try {
+        const response = await fetch("/ask", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-API-Key": key,
+            "X-User-Id": uid
+          },
+          body: JSON.stringify({ question: text })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const detail = Array.isArray(data.detail) ? data.detail[0]?.msg : data.detail;
+          throw new Error(detail || `Request failed (${response.status})`);
+        }
+        const meta = `${data.tokens.in} in · ${data.tokens.out} out · $${data.cost_usd}`;
+        addMessage("assistant", data.answer, meta);
+        setStatus(true, `${data.user_id} · history ${data.history_length}`);
+      } catch (error) {
+        addMessage("assistant", `Không thể xử lý yêu cầu: ${error.message}`);
+        setStatus(false, error.message);
+      } finally {
+        sendButton.disabled = false;
+        sendButton.textContent = "Gửi";
+        question.focus();
+      }
+    });
+
+    checkHealth();
+  </script>
+</body>
+</html>
